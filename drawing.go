@@ -1522,20 +1522,28 @@ func (f *File) addDrawingChart(sheet, drawingXML, cell string, width, height, rI
 	if err != nil {
 		return err
 	}
-	twoCellAnchor := xdrCellAnchor{}
-	twoCellAnchor.EditAs = opts.Positioning
+	cellAnchor := xdrCellAnchor{}
 	from := xlsxFrom{}
 	from.Col = colStart
 	from.ColOff = x1 * EMU
 	from.Row = rowStart
 	from.RowOff = y1 * EMU
-	to := xlsxTo{}
-	to.Col = colEnd
-	to.ColOff = x2 * EMU
-	to.Row = rowEnd
-	to.RowOff = y2 * EMU
-	twoCellAnchor.From = &from
-	twoCellAnchor.To = &to
+	cellAnchor.From = &from
+	if opts.Positioning != "oneCell" {
+		to := xlsxTo{}
+		to.Col = colEnd
+		to.ColOff = x2 * EMU
+		to.Row = rowEnd
+		to.RowOff = y2 * EMU
+		cellAnchor.To = &to
+		cellAnchor.EditAs = opts.Positioning
+	}
+	if opts.Positioning == "oneCell" {
+		cellAnchor.Ext = &xlsxPositiveSize2D{
+			Cx: x2 * EMU,
+			Cy: y2 * EMU,
+		}
+	}
 
 	graphicFrame := xlsxGraphicFrame{
 		NvGraphicFramePr: xlsxNvGraphicFramePr{
@@ -1560,12 +1568,16 @@ func (f *File) addDrawingChart(sheet, drawingXML, cell string, width, height, rI
 		graphicFrame.NvGraphicFramePr.CNvPr.Name = opts.Name
 	}
 	graphic, _ := xml.Marshal(graphicFrame)
-	twoCellAnchor.GraphicFrame = string(graphic)
-	twoCellAnchor.ClientData = &xdrClientData{
+	cellAnchor.GraphicFrame = string(graphic)
+	cellAnchor.ClientData = &xdrClientData{
 		FLocksWithSheet:  *opts.Locked,
 		FPrintsWithSheet: *opts.PrintObject,
 	}
-	content.TwoCellAnchor = append(content.TwoCellAnchor, &twoCellAnchor)
+	if opts.Positioning == "oneCell" {
+		content.OneCellAnchor = append(content.OneCellAnchor, &cellAnchor)
+	} else {
+		content.TwoCellAnchor = append(content.TwoCellAnchor, &cellAnchor)
+	}
 	f.Drawings.Store(drawingXML, content)
 	return err
 }
